@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>ExpOFS_AMS_2.0.0</title>
+        <script src="jspsych/jspsych.js"></script>
+        <script src="jspsych/plugins/jspsych-html-keyboard-response.js"></script>
+        <script src="jspsych/plugins/jspsych-html-button-response.js"></script>
+        <script src="jspsych/plugins/jspsych-instructions.js"></script>
+        <script src="jspsych/plugins/jspsych-image-keyboard-response.js"></script>
+        <script src="jspsych/plugins/jspsych-survey-text.js"></script>
+        <script src="TESTstim_ita/Practice_Aq.js"></script>
+        <script src="TESTstim_ita/Practice_Bp.js"></script>
+        <script src="TESTstim_ita/PreExp_Aq.js"></script>
+        <script src="TESTstim_ita/PreExp_Bp.js"></script>
+        <script src="TESTstim_ita/OFS_AMS_Input_Aq.js"></script>
+        <script src="TESTstim_ita/OFS_AMS_Input_Bp.js"></script>
+        <script src="TESTstim_ita/inputMSG_ita.js"></script>
+        <script src="jatos.js"></script>
+        <link href="jspsych/css/jspsych.css" rel="stylesheet" type="text/css"></link>
+    </head>
+    <body>
+        <div id="jspsych-target"></div>
+    </body>
+    <script>
+        var timeline=[];
+        var rep_prac=false;
+        var exp_stim=[];
+        var prac_stim=[];
+        var preExp_stim=[];
+        var nPracStim=8;
+        var nBlock=6;
+        //Flip coin to choose key response assignment
+        var keyVersion=jsPsych.randomization.sampleWithoutReplacement([1,2],1)[0];
+        console.log('version: ',keyVersion);
+        //According to "keyversion", assign to "expStim" variable the correct stimuli set from input file (Aq or Bp)
+        if (keyVersion==1){
+            exp_stim=OFS_AMS_Input_Aq;
+            prac_stim=Practice_Aq;
+            preExp_stim=preExp_Aq;
+        } else{
+            exp_stim=OFS_AMS_Input_Bp;
+            prac_stim=Practice_Bp;
+            preExp_stim=preExp_Bp;
+        };
+        //Create vector of length=exp_stim to randomly assign block nr
+        var randVec=[].concat(...Array(Math.trunc(exp_stim.length/nBlock)).fill([1,2,3,4,5,6]));
+        if (exp_stim.length%2>0){
+            randVec.push(1);
+        };
+        randVec.sort(()=>Math.random() -0.5);
+        for (let i=0; i<randVec.length;i++){
+            exp_stim[i].Block=randVec[i];
+        };
+        var expStim_b1=exp_stim.filter(exp_stim=>exp_stim.Block===1);
+        var expStim_b2=exp_stim.filter(exp_stim=>exp_stim.Block===2);
+        var expStim_b3=exp_stim.filter(exp_stim=>exp_stim.Block===3);
+        var expStim_b4=exp_stim.filter(exp_stim=>exp_stim.Block===4);
+        var expStim_b5=exp_stim.filter(exp_stim=>exp_stim.Block===5);
+        var expStim_b6=exp_stim.filter(exp_stim=>exp_stim.Block===6);
+        var OFS_AMS_msg=LangMSG_ita;
+        var mainWord='Word2';
+        var detWord='Word1';
+        var wordPROMPT=1;
+        /////////////////////////////////////////////////
+        //Messages variables (welcome, survey, instructions etc.)
+        //Start message
+        var startMSG={
+            type:'instructions',
+            pages:function(){
+                if (keyVersion==1){
+                    var startMSG=OFS_AMS_msg.start_a;
+                } else{
+                    var startMSG=OFS_AMS_msg.start_b;
+                }
+                return startMSG;
+            },
+            show_clickable_nav:true,
+            button_label_previous:function(){
+                return OFS_AMS_msg.buttPre
+            },
+            button_label_next:function(){
+                return OFS_AMS_msg.buttNext
+            }
+        };
+        //Instructions for Practice1
+        var instructionPRACT1={
+            type:'html-keyboard-response',
+            stimulus:function(){
+                return OFS_AMS_msg.instPRACT1;
+            },
+            choices:[' ']
+        };
+        //Message in case of bad performance in Practice1
+        var repeatPRACT1={
+            type:'html-keyboard-response',
+            stimulus:function(){
+                return OFS_AMS_msg.repPRACT1
+            },
+            choices:[' ']
+        };
+        //Instructions for Practice2
+        var instructionPRACT2={
+            type:'html-keyboard-response',
+            stimulus:function(){
+                return OFS_AMS_msg.instPRACT2;
+            },
+            choices:[' '],
+            on_finish:function(){
+                wordPROMPT=0;
+                return wordPROMPT
+            }
+        };
+        //Message in case of bad performance in Practice2
+        var repeatPRACT2={
+            type:'html-keyboard-response',
+            stimulus:function(){
+                if (keyVersion==1){
+                    var repPRACT2=OFS_AMS_msg.repPRACT2_a;
+                } else{
+                    var repPRACT2=OFS_AMS_msg.repPRACT2_b;
+                }
+                return repPRACT2;
+            },
+            choices:[' ']
+        };
+        //Main experiment instructions
+        var instructionMainEXP={
+            type:'html-keyboard-response',
+            stimulus:function(){
+                if (keyVersion==1){
+                    var instMSG=OFS_AMS_msg.instMAIN_a;
+                } else{
+                    var instMSG=OFS_AMS_msg.instMAIN_b;
+                }
+                return instMSG;
+            },
+            choices:[' ']
+        };
+        //Break message between experimental blocks
+        var breakMessage={
+            type:'html-keyboard-response',
+            stimulus:function(){
+                var exp_trials=jsPsych.data.get().filter({trial_part:'word'}).last(exp_stim.length/nBlock);
+                var n_correct=exp_trials.filter({ACC: 1}).count();
+                var prop_correct=n_correct/(exp_stim.length/nBlock);
+                console.log(prop_correct);
+                var gMSG="<p>In questo blocco hai dato il "+(Math.round(100*prop_correct))+"% di risposte corrette.</p>";
+                return [gMSG+OFS_AMS_msg.breakMSG];
+            },
+            choices:[' ']
+        };
+        var goodbyeMessage={
+            type:'survey-text',
+            questions:function(){
+                var exp_trials=jsPsych.data.get().filter({trial_part:'word'}).last(exp_stim.length);
+                var n_correct=exp_trials.filter({ACC: 1}).count();
+                var prop_correct=n_correct/exp_stim.length;
+                console.log(prop_correct);
+                var gMSG="<p>Il tuo totale di risposte corrette &egrave: "+(Math.round(100*prop_correct))+"%</p>";
+                return [
+                    {prompt: gMSG+OFS_AMS_msg.goodbyeMSG}
+                ]
+            },
+            button_label:function(){
+                return OFS_AMS_msg.buttEnd
+            }
+        };
+        /////////////////////////////////////////////////
+        ////Trial variables:
+        //Inter Trial Interval
+        var ITI={
+            type:'html-keyboard-response',
+            stimulus:'',
+            choices:jsPsych.NO_KEYS,
+            trial_duration:function(){
+                ITI=Math.floor(Math.random()*(1200-900)+900);
+                return ITI
+            }
+        };
+        //Fixation cross
+        var fix={
+            type:'html-keyboard-response',
+            stimulus:'<div style="font-size:40px;color:#666666;">+</div>',
+            choices:jsPsych.NO_KEYS,
+            trial_duration:200
+        };
+        //Trial variables: blank screen
+        var blank={
+            type:'html-keyboard-response',
+            stimulus:'',
+            choices:jsPsych.NO_KEYS,
+            trial_duration:50
+        };
+        //Trial variables: image
+        var img={
+            type:'image-keyboard-response',
+            stimulus:function(){
+                return jsPsych.timelineVariable('Picture_name',true)
+            },
+            stimulus_height:300,
+            maintain_aspect_ration:true,
+            choices:jsPsych.NO_KEYS,
+            trial_duration:250
+        };
+        //Trial variables: noise mask
+        var noise={
+            type:'image-keyboard-response',
+            stimulus:'noisemask.jpeg',
+            stimulus_height:300,
+            maintain_aspect_ration:true,
+            choices:jsPsych.NO_KEYS,
+            trial_duration:150
+        };
+        
+        //Trial variables: word stimulus (Prompt shown only in Practice1)
+        var word={
+            type:'html-keyboard-response',
+            stimulus:function(){
+                return '<p style="line-height:1.1">'+jsPsych.timelineVariable(detWord,true)+
+                    '</p>'+'<p style="line-height:1.1">'+jsPsych.timelineVariable(mainWord,true)+'</p>'
+            },
+            choices:['q','p'],
+            prompt:function(){
+                if (wordPROMPT==1){
+                    if (keyVersion==1){
+                        var answ=OFS_AMS_msg.answer_a;
+                    } else{
+                        var answ=OFS_AMS_msg.answer_b;
+                    }
+                } else{
+                    var answ='';
+                }
+                return answ;
+            },
+            trial_duration:1500,
+            response_ends_trial:true,
+            data:{
+                trial_part:'word',
+                Cond_ID:function(){
+                    return jsPsych.timelineVariable('Cond_ID',true)
+                },
+                Picture_name:function(){
+                    return jsPsych.timelineVariable('Picture_name',true)
+                },
+                Object_name:function(){
+                    return jsPsych.timelineVariable('Object_name',true)
+                },
+                Numerosity_fig:function(){
+                    return jsPsych.timelineVariable('Numerosity_fig',true)
+                },
+                Word_syn:function(){
+                    return jsPsych.timelineVariable('Word_syn',true)
+                },
+                Word1:function(){
+                    return jsPsych.timelineVariable('Word1',true)
+                },
+                Word2:function(){
+                    return jsPsych.timelineVariable('Word2',true)
+                },
+                Word_numeral_num:function(){
+                    return jsPsych.timelineVariable('Word_numeral_num',true)
+                },
+                Word_morph_num:function(){
+                    return jsPsych.timelineVariable('Word_morph_num',true)
+                },
+                Syn_type:function(){
+                    return jsPsych.timelineVariable('Syn_type',true)
+                },
+                Congruency_SYN:function(){
+                    return jsPsych.timelineVariable('Congruency_SYN',true)
+                },
+                Congruency_NUM:function(){
+                    return jsPsych.timelineVariable('Congruency_NUM',true)
+                },
+                Congruency_DET:function(){
+                    return jsPsych.timelineVariable('Congruency_DET',true)
+                },
+                Congruency_MOR:function(){
+                    return jsPsych.timelineVariable('Congruency_MOR',true)
+                },
+                Incongruency_NUM:function(){
+                    return jsPsych.timelineVariable('Incongruency_NUM',true)
+                },
+                Congruency_SEM:function(){
+                    return jsPsych.timelineVariable('Congruency_SEM',true)
+                },
+                Freq_word2_raw:function(){
+                    return jsPsych.timelineVariable('Freq_word2_raw',true)
+                },
+                Freq_word2_Zipf:function(){
+                    return jsPsych.timelineVariable('Freq_word2_Zipf',true)
+                },
+                lemma:function(){
+                    return jsPsych.timelineVariable('lemma',true)
+                },
+                Freq_lemma:function(){
+                    return jsPsych.timelineVariable('Freq_lemma',true)
+                },
+                Freq_det:function(){
+                    return jsPsych.timelineVariable('Freq_det',true)
+                },
+                Freq_num:function(){
+                    return jsPsych.timelineVariable('Freq_num',true)
+                },
+                Length_word1:function(){
+                    return jsPsych.timelineVariable('Length_word1',true)
+                },
+                Length_word2:function(){
+                    return jsPsych.timelineVariable('Length_word2',true)
+                },
+                Length_syn:function(){
+                    return jsPsych.timelineVariable('Length_syn',true)
+                },
+                Background_pixels:function(){
+                    return jsPsych.timelineVariable('Background_pixels',true)
+                },
+                Figure_Pixels:function(){
+                    return jsPsych.timelineVariable('Figure_Pixels',true)
+                },
+                Background_prop:function(){
+                    return jsPsych.timelineVariable('Background_prop',true)
+                },
+                Figure_prop:function(){
+                    return jsPsych.timelineVariable('Figure_prop',true)
+                },
+                Fig_to_back_ratio:function(){
+                    return jsPsych.timelineVariable('Fig_to_back_ratio',true)
+                },
+                Jpeg_size:function(){
+                    return jsPsych.timelineVariable('Jpeg_size',true)
+                },
+                Fig_to_back_ratio:function(){
+                    return jsPsych.timelineVariable('Fig_to_back_ratio',true)
+                },
+                Language:function(){
+                    return jsPsych.timelineVariable('Language',true)
+                },
+                Exp_or_fil:function(){
+                    return jsPsych.timelineVariable('Exp_or_fil',true)
+                },
+                Block:function(){
+                    return jsPsych.timelineVariable('Block',true)
+                },
+                Presentation_counterb:function(){
+                    return jsPsych.timelineVariable('Presentation_counterb',true)
+                },
+                Corr_ans_key:function(){
+                    return jsPsych.timelineVariable('Corr_ans_key',true)
+                },
+                Corr_key_position:function(){
+                    return jsPsych.timelineVariable('Corr_key_position',true)
+                }
+            },
+            on_finish:function(data){
+                data.Trial_seq_num=data.trial_index;
+                data.Pressed_key=jsPsych.pluginAPI.convertKeyCodeToKeyCharacter(data.key_press);
+                if (data.Pressed_key=="q"){
+                    key_pos="left";
+                } else if (data.Pressed_key=="p") {
+                    key_pos="right";
+                } else {
+                    key_pos="null";
+                };
+                data.Pressed_key_position=key_pos;
+                var acc=0;
+                if(data.Corr_ans_key==jsPsych.pluginAPI.convertKeyCodeToKeyCharacter(data.key_press)){
+                    acc=1;
+                }
+                data.ACC=acc;
+                data.RT=data.rt;
+                data.Timestamp=data.time_elapsed;
+                data.ITI=ITI;
+            },
+        };
+        //Feedback variable-function
+        var feedback={
+            type:'image-keyboard-response',
+            stimulus:function(){
+                var feedback_icon="falseIcon.jpg";
+                var last_trial_acc=jsPsych.data.getLastTrialData().values()[0].ACC;
+                if (last_trial_acc==true){
+                    feedback_icon="trueIcon.jpg";
+                }
+                return feedback_icon
+            },
+            stimulus_height:50,
+            maintain_aspect_ration:true,
+            choices:jsPsych.NO_KEYS,
+            trial_duration:1500
+        };
+
+        /////////////////////////////////////////////////
+        //START timeline
+        //timeline.push(welcomeMSG,surveyLNG,startMSG,instructionPRACT1);
+        timeline.push(startMSG,instructionPRACT1);
+        //////////////////////////////////////////
+        //Conditional timeline for PRACTICE1 (check %correct responses, if <80% show a message and repeat it)
+        var Practice={
+            timeline:[ITI,fix,blank,img,noise,blank,word,feedback],
+            timeline_variables:prac_stim,
+            sample:{
+                type:'without-replacement',
+                size:nPracStim,
+            }
+        };
+        var repeatPRACT1_conditional={
+            timeline:[repeatPRACT1],
+            conditional_function:function(){
+                var last_prac_trials=jsPsych.data.get().filter({trial_part:'word'}).last(nPracStim);
+                var n_correct=last_prac_trials.filter({ACC: 1}).count();
+                var prop_correct=n_correct/nPracStim;
+                console.log(prop_correct);
+                if (prop_correct<0.8){
+                    rep_prac=true;
+                    return true;
+                } else {
+                    rep_prac=false;
+                    return false;
+                }
+            }
+        };
+        var Practice1_loop={
+            timeline:[Practice,repeatPRACT1_conditional],
+            loop_function:function(){
+                if (rep_prac==true){
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        }
+        timeline.push(Practice1_loop);
+        timeline.push(instructionPRACT2);
+        //Conditional timeline for PRACTICE2 (check %correct responses, if <80% show a message and repeat it)
+        var repeatPRACT2_conditional={
+            timeline:[repeatPRACT2],
+            conditional_function:function(){
+                var last_prac_trials=jsPsych.data.get().filter({trial_part:'word'}).last(nPracStim);
+                var n_correct=last_prac_trials.filter({ACC: 1}).count();
+                var prop_correct=n_correct/nPracStim;
+                console.log(prop_correct);
+                if (prop_correct<0.8){
+                    rep_prac=true;
+                    return true;
+                } else {
+                    rep_prac=false;
+                    return false;
+                }
+            }
+        };
+        var Practice2_loop={
+            timeline:[Practice,repeatPRACT2_conditional],
+            loop_function:function(){
+                if (rep_prac==true){
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        }
+        timeline.push(Practice2_loop);        
+        /////////////////////////////////////////////////
+        //Main experiment timeline
+        var preMainExp={
+            timeline:[ITI,fix,blank,img,noise,blank,word],
+            timeline_variables:preExp_stim
+        };
+        var mainExp_block1={
+            timeline:[ITI,fix,blank,img,noise,blank,word],
+            timeline_variables:expStim_b1,
+            randomize_order:true
+        };
+        var mainExp_block2={
+            timeline:[ITI,fix,blank,img,noise,blank,word],
+            timeline_variables:expStim_b2,
+            randomize_order:true
+        };
+        var mainExp_block3={
+            timeline:[ITI,fix,blank,img,noise,blank,word],
+            timeline_variables:expStim_b3,
+            randomize_order:true
+        };
+        var mainExp_block4={
+            timeline:[ITI,fix,blank,img,noise,blank,word],
+            timeline_variables:expStim_b4,
+            randomize_order:true
+        };
+        var mainExp_block5={
+            timeline:[ITI,fix,blank,img,noise,blank,word],
+            timeline_variables:expStim_b5,
+            randomize_order:true
+        };
+        var mainExp_block6={
+            timeline:[ITI,fix,blank,img,noise,blank,word],
+            timeline_variables:expStim_b6,
+            randomize_order:true
+        };
+        timeline.push(instructionMainEXP,preMainExp,mainExp_block1,breakMessage,mainExp_block2,breakMessage,mainExp_block3,
+        breakMessage,mainExp_block4,breakMessage,mainExp_block5,breakMessage,mainExp_block6,goodbyeMessage);
+
+        jatos.onLoad(function(){
+            jsPsych.data.addProperties({subjID: jatos.workerId,batchID: jatos.batchID}),
+            jsPsych.init({
+                timeline:timeline,
+                on_finish:function(data){
+                    var resultJson=jsPsych.data.get().filter({trial_part:'word'}).json();
+                    jatos.submitResultData(resultJson, jatos.endStudy);
+                }
+            });
+        });
+    </script>
+</html>
