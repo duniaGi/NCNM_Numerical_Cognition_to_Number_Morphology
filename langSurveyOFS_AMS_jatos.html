@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>ExpOFS_AMS_2.2.0_langSurvey</title>
+        <script src="jspsych/jspsych.js"></script>
+        <script src="jspsych/plugins/jspsych-instructions.js"></script>
+        <script src="jspsych/plugins/jspsych-survey-text.js"></script>
+        <script src="jspsych/plugins/jspsych-survey-multi-choice.js"></script>
+        <script src="TESTstim_ita/inputMSG_ita.js"></script>
+        <script src="jatos.js"></script>
+        <link href="jspsych/css/jspsych.css" rel="stylesheet" type="text/css"></link>
+    </head>
+    <body>
+        <div id="jspsych-target"></div>
+    </body>
+    <script>
+        var timeline=[];
+        var OFS_AMS_msg=LangMSG_ita;
+        //Informed Consent
+        var infoConsent={
+            type:'instructions',
+            pages:function(){
+                return OFS_AMS_msg.informedConsent
+            },
+            show_clickable_nav:true,
+            button_label_previous:function(){
+                return OFS_AMS_msg.buttPre
+            },
+            button_label_next:function(){
+                return OFS_AMS_msg.buttNext
+            }
+        };
+        //Welcome message
+        var welcomeMSG={
+            type:'instructions',
+            pages:function(){
+                return OFS_AMS_msg.welc
+            },
+            show_clickable_nav:true,
+            button_label_previous:function(){
+                return OFS_AMS_msg.buttPre
+            },
+            button_label_next:function(){
+                return OFS_AMS_msg.buttNext
+            }
+        };
+        //Demographic questions (stored as subdictionary in inputMSG js file)      
+        var surveyAGE={
+            type:'survey-text',
+            questions:function(){
+                return OFS_AMS_msg.ageSurvey
+            },
+            button_label:function(){
+                return OFS_AMS_msg.buttNext
+            },
+            data:{
+                instrType:'survey'
+            }
+        };
+        var surveyDEMOG={
+            type:'survey-multi-choice',
+            questions:function(){
+                return OFS_AMS_msg.demoSurvey
+            },
+            button_label:function(){
+                return OFS_AMS_msg.buttNext
+            },
+            data:{
+                instrType:'survey'
+            }
+        };
+        //Language-related questions (stored as subdictionary in inputMSG js file)        
+        var surveyLNG1={
+            type:'survey-multi-choice',
+            questions:function(){
+                return OFS_AMS_msg.langSurvey1
+            },
+            button_label:function(){
+                return OFS_AMS_msg.buttNext
+            },
+            data:{
+                instrType:'survey'
+            }
+        };
+        var surveyLNG2={
+            type:'survey-text',
+            questions:function(){
+                return OFS_AMS_msg.langSurvey2
+            },
+            button_label:function(){
+                return OFS_AMS_msg.buttNext
+            },
+            data:{
+                instrType:'survey'
+            }
+        };
+        timeline.push(infoConsent,welcomeMSG,surveyAGE,surveyDEMOG,surveyLNG1,surveyLNG2);
+
+        jatos.onLoad(function(){
+            jsPsych.data.addProperties({subjID: jatos.workerId,batchID: jatos.batchID}),
+            jsPsych.init({
+                timeline:timeline,
+                on_finish:function(data){
+                    var resultSurveyJson=jsPsych.data.get().filter({instrType:'survey'}).json();
+                    jatos.submitResultData(resultSurveyJson,jatos.startNextComponent);
+                }
+            });
+        });
+    </script>
+</html>
